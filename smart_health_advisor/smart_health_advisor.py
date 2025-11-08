@@ -22,7 +22,8 @@ def get_conn():
 def init_db():
     conn = get_conn()
     c = conn.cursor()
-    c.execute(\"\"\"
+
+    c.execute("""
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE,
@@ -36,21 +37,19 @@ def init_db():
         medical_conditions TEXT,
         created_at TEXT
     )
-    \"\"\")
-    c.execute(\"\"\"
+    """)
+    c.execute("""
     CREATE TABLE IF NOT EXISTS logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER,
         log_date TEXT,
         food_text TEXT,
         calories_consumed REAL,
-        exercise_text TEXT,
-        calories_burned REAL,
-        water_liters REAL,
-        sleep_hours REAL,
-        notes TEXT
+        steps_walked INTEGER,
+        FOREIGN KEY(user_id) REFERENCES users(id)
     )
-    \"\"\")
+    """)
+
     conn.commit()
     conn.close()
 
