@@ -63,19 +63,16 @@ def check_password(password: str, hashed: str) -> bool:
     except Exception:
         return False
 
-def create_user(username, password, name=\"\", age=25, gender=\"Other\", height_cm=170.0, weight_kg=70.0, activity_level=\"Sedentary\", medical_conditions=\"\"):
+def create_user(username, password, name="", age=25, gender="Other", height_cm=170.0, weight_kg=70.0, activity_level="Sedentary", medical_conditions=""):
     conn = get_conn()
     c = conn.cursor()
-    pw_hash = hash_password(password)
-    now = datetime.utcnow().isoformat()
-    c.execute(\"\"\"
+    password_hash = hashlib.sha256(password.encode()).hexdigest()
+    c.execute("""
         INSERT INTO users (username, password_hash, name, age, gender, height_cm, weight_kg, activity_level, medical_conditions, created_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?)
-    \"\"\", (username, pw_hash, name, age, gender, height_cm, weight_kg, activity_level, medical_conditions, now))
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    """, (username, password_hash, name, age, gender, height_cm, weight_kg, activity_level, medical_conditions))
     conn.commit()
-    uid = c.lastrowid
     conn.close()
-    return uid
 
 def get_user_by_username(username):
     conn = get_conn()
