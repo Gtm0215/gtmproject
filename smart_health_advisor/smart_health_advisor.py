@@ -87,13 +87,12 @@ def get_user_by_username(username):
 def get_user_by_id(user_id):
     conn = get_conn()
     c = conn.cursor()
-    c.execute(\"SELECT * FROM users WHERE id=?\", (user_id,))
+    c.execute("SELECT * FROM users WHERE id=?", (user_id,))
     row = c.fetchone()
     conn.close()
     if not row:
         return None
-    keys = [\"id\",\"username\",\"password_hash\",\"name\",\"age\",\"gender\",\"height_cm\",\"weight_kg\",\"activity_level\",\"medical_conditions\",\"created_at\"]
-
+    keys = ["id", "username", "password_hash", "name", "age", "gender", "height_cm", "weight_kg", "activity_level", "medical_conditions", "created_at"]
     return dict(zip(keys, row))
 
 def update_profile(user_id, profile: dict):
