@@ -245,20 +245,23 @@ if st.session_state.user_id is None:
     st.subheader("🔐 Login or Create Account")
     tab1, tab2 = st.tabs(["Login", "Sign Up"])
 
+    # ---- Login Tab ----
     with tab1:
         with st.form("login_form"):
             lu = st.text_input("Username")
             lp = st.text_input("Password", type="password")
             lbtn = st.form_submit_button("Login")
+
             if lbtn:
                 user = get_user_by_username(lu.strip())
                 if user and check_password(lp, user["password_hash"]):
                     st.success("Login successful")
                     st.session_state.user_id = user["id"]
-                    st.experimental_rerun()
+                    st.rerun()  # ✅ Updated to latest Streamlit version
                 else:
                     st.error("Invalid username or password")
 
+    # ---- Sign Up Tab ----
     with tab2:
         with st.form("signup_form"):
             su = st.text_input("Choose username")
@@ -268,9 +271,13 @@ if st.session_state.user_id is None:
             gender = st.selectbox("Gender", ["Male", "Female", "Other"])
             height = st.number_input("Height (cm)", 80.0, 250.0, 170.0)
             weight = st.number_input("Weight (kg)", 20.0, 300.0, 70.0)
-            activity = st.selectbox("Activity level", ["Sedentary", "Lightly active", "Moderately active", "Very active", "Extra active"])
+            activity = st.selectbox(
+                "Activity level",
+                ["Sedentary", "Lightly active", "Moderately active", "Very active", "Extra active"]
+            )
             medical = st.text_area("Medical conditions (comma separated)")
             sbtn = st.form_submit_button("Create account")
+
             if sbtn:
                 if not su or not sp:
                     st.error("Please provide username and password")
@@ -278,7 +285,17 @@ if st.session_state.user_id is None:
                     st.error("Username already taken")
                 else:
                     try:
-                        uid = create_user(su.strip(), sp, name, age, gender, height, weight, activity, medical)
+                        uid = create_user(
+                            su.strip(),
+                            sp,
+                            name=name,
+                            age=age,
+                            gender=gender,
+                            height_cm=height,
+                            weight_kg=weight,
+                            activity_level=activity,
+                            medical_conditions=medical,
+                        )
                         st.success(f"Account created (id {uid}). Please login.")
                     except Exception as e:
                         st.error(f"Error creating account: {e}")
