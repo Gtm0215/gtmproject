@@ -77,15 +77,13 @@ def create_user(username, password, name="", age=25, gender="Other", height_cm=1
 def get_user_by_username(username):
     conn = get_conn()
     c = conn.cursor()
-    c.execute(\"SELECT * FROM users WHERE username=?\", (username,))
+    c.execute("SELECT * FROM users WHERE username=?", (username,))
     row = c.fetchone()
     conn.close()
     if not row:
         return None
-    keys = [\"id\",\"username\",\"password_hash\",\"name\",\"age\",\"gender\",\"height_cm\",\"weight_kg\",\"activity_level\",\"medical_conditions\",\"created_at\"]
-
+    keys = ["id", "username", "password_hash", "name", "age", "gender", "height_cm", "weight_kg", "activity_level", "medical_conditions", "created_at"]
     return dict(zip(keys, row))
-
 def get_user_by_id(user_id):
     conn = get_conn()
     c = conn.cursor()
