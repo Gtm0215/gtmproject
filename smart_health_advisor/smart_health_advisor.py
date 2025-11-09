@@ -13,6 +13,7 @@ import altair as alt
 conn = sqlite3.connect('health_advisor.db', check_same_thread=False)
 c = conn.cursor()
 
+# Create tables if not exist
 c.execute('''CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT,
@@ -78,10 +79,13 @@ with col2:
     activity = st.selectbox("Activity Level", ["Sedentary","Light","Moderate","Very Active"])
 diet = st.selectbox("Diet Preference", ["Vegetarian","Non-Vegetarian"])
 
-if st.button("Save Profile"):
-    c.execute("INSERT INTO users (name, age, gender, activity, diet) VALUES (?,?,?,?,?)",(name,age,gender,activity,diet))
-    conn.commit()
-    st.success(f"Profile for {name} saved successfully!")
+if st.button("Save Profile") and name:
+    try:
+        c.execute("INSERT INTO users (name, age, gender, activity, diet) VALUES (?,?,?,?,?)",(name,age,gender,activity,diet))
+        conn.commit()
+        st.success(f"Profile for {name} saved successfully!")
+    except sqlite3.OperationalError as e:
+        st.error(f"Database error: {e}")
 
 if name:
     st.markdown(f"""
@@ -128,56 +132,65 @@ for ex in workout_plan:
         components.html(f"""
         <model-viewer src="{info['animation']}" auto-rotate camera-controls ar style="width:100%;height:300px;"></model-viewer>
         """, height=300)
-    if st.button(f"Mark {ex} as done"):
-        today = datetime.date.today().isoformat()
-        c.execute("INSERT INTO daily_track (name,exercise,calories,completed,date) VALUES (?,?,?,?,?)",
-                  (name,ex,info['calories'],True,today))
-        conn.commit()
-        st.success(f"{ex} marked as done!")
+    if st.button(f"Mark {ex} as done") and name:
+        try:
+            today = datetime.date.today().isoformat()
+            c.execute("INSERT INTO daily_track (name,exercise,calories,completed,date) VALUES (?,?,?,?,?)",
+                      (name,ex,info['calories'],True,today))
+            conn.commit()
+            st.success(f"{ex} marked as done!")
+        except sqlite3.OperationalError as e:
+            st.error(f"Database error: {e}")
 
 # ------------------------------
 # DAILY TRACKER
 # ------------------------------
 st.markdown("<hr style='border:2px solid #0072ff'>", unsafe_allow_html=True)
 st.header("📊 Daily Progress Tracker")
-today = datetime.date.today().isoformat()
-c.execute("SELECT exercise, calories FROM daily_track WHERE name=? AND date=? AND completed=1",(name,today))
-rows = c.fetchall()
-total_cal = sum([r[1] for r in rows])
-if rows:
-    st.write(f"Exercises completed today: {len(rows)}")
-    st.write(f"Calories burned today: {total_cal} kcal")
-    for r in rows:
-        st.write(f"✅ {r[0]} - {r[1]} kcal")
-else:
-    st.write("No exercises completed yet.")
+if name:
+    try:
+        today = datetime.date.today().isoformat()
+        c.execute("SELECT exercise, calories FROM daily_track WHERE name=? AND date=? AND completed=1",(name,today))
+        rows = c.fetchall()
+        total_cal = sum([r[1] for r in rows])
+        if rows:
+            st.write(f"Exercises completed today: {len(rows)}")
+            st.write(f"Calories burned today: {total_cal} kcal")
+            for r in rows:
+                st.write(f"✅ {r[0]} - {r[1]} kcal")
+        else:
+            st.write("No exercises completed yet.")
+    except sqlite3.OperationalError as e:
+        st.error(f"Database error: {e}")
+        rows = []
 
 # ------------------------------
 # WEEKLY TRACKING
 # ------------------------------
 st.markdown("<hr style='border:2px solid #0072ff'>", unsafe_allow_html=True)
 st.header("📈 Weekly Progress Tracker")
-week_ago = (datetime.date.today() - datetime.timedelta(days=6)).isoformat()
-c.execute("SELECT date, SUM(calories) as cal_count, COUNT(exercise) as ex_count FROM daily_track WHERE name=? AND date>=? GROUP BY date",(name,week_ago))
-week_data = c.fetchall()
-
-if week_data:
-    df = pd.DataFrame(week_data, columns=["date","calories","exercise_count"])
-    df['date'] = pd.to_datetime(df['date'])
-    # Calories burned line chart
-    line_chart = alt.Chart(df).mark_line(point=True, color="#00FFFF").encode(
-        x=alt.X('date:T', title="Date"),
-        y=alt.Y('calories:Q', title="Calories Burned")
-    )
-    st.altair_chart(line_chart,use_container_width=True)
-    # Exercises per day bar chart
-    bar_chart = alt.Chart(df).mark_bar(color="#FF00FF").encode(
-        x=alt.X('date:T', title="Date"),
-        y=alt.Y('exercise_count:Q', title="Exercises Completed")
-    )
-    st.altair_chart(bar_chart,use_container_width=True)
-else:
-    st.write("No weekly data available. Start completing exercises!")
+if name:
+    try:
+        week_ago = (datetime.date.today() - datetime.timedelta(days=6)).isoformat()
+        c.execute("SELECT date, SUM(calories) as cal_count, COUNT(exercise) as ex_count FROM daily_track WHERE name=? AND date>=? GROUP BY date",(name,week_ago))
+        week_data = c.fetchall()
+        if week_data:
+            df = pd.DataFrame(week_data, columns=["date","calories","exercise_count"])
+            df['date'] = pd.to_datetime(df['date'])
+            line_chart = alt.Chart(df).mark_line(point=True, color="#00FFFF").encode(
+                x=alt.X('date:T', title="Date"),
+                y=alt.Y('calories:Q', title="Calories Burned")
+            )
+            st.altair_chart(line_chart,use_container_width=True)
+            bar_chart = alt.Chart(df).mark_bar(color="#FF00FF").encode(
+                x=alt.X('date:T', title="Date"),
+                y=alt.Y('exercise_count:Q', title="Exercises Completed")
+            )
+            st.altair_chart(bar_chart,use_container_width=True)
+        else:
+            st.write("No weekly data available. Start completing exercises!")
+    except sqlite3.OperationalError as e:
+        st.error(f"Database error: {e}")
 
 # ------------------------------
 # DIET PLAN
@@ -204,29 +217,18 @@ st.header("💪 Back Day Plans")
 back_day1 = ["Pull-up","Lat Pulldown","Seated Row"]
 back_day2 = ["T-bar Row","Deadlift","Face Pull"]
 
-st.subheader("Back Day 1")
-for ex in back_day1:
-    if ex in exercises:
-        info = exercises[ex]
-        col1,col2 = st.columns([1,1])
-        with col1:
-            st.write(f"{info['emoji']} {ex} - {info['muscles']}")
-        with col2:
-            components.html(f"""
-            <model-viewer src="{info['animation']}" auto-rotate camera-controls ar style="width:100%;height:300px;"></model-viewer>
-            """, height=300)
-
-st.subheader("Back Day 2")
-for ex in back_day2:
-    if ex in exercises:
-        info = exercises[ex]
-        col1,col2 = st.columns([1,1])
-        with col1:
-            st.write(f"{info['emoji']} {ex} - {info['muscles']}")
-        with col2:
-            components.html(f"""
-            <model-viewer src="{info['animation']}" auto-rotate camera-controls ar style="width:100%;height:300px;"></model-viewer>
-            """, height=300)
+for i, day in enumerate([back_day1, back_day2], start=1):
+    st.subheader(f"Back Day {i}")
+    for ex in day:
+        if ex in exercises:
+            info = exercises[ex]
+            col1,col2 = st.columns([1,1])
+            with col1:
+                st.write(f"{info['emoji']} {ex} - {info['muscles']}")
+            with col2:
+                components.html(f"""
+                <model-viewer src="{info['animation']}" auto-rotate camera-controls ar style="width:100%;height:300px;"></model-viewer>
+                """, height=300)
 
 # ------------------------------
 # ABOUT DEVELOPER
