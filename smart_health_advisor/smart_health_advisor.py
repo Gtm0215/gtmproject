@@ -28,10 +28,17 @@ c.execute('''CREATE TABLE IF NOT EXISTS daily_track (
     name TEXT,
     exercise TEXT,
     calories INT,
-    completed BOOLEAN,
-    date TEXT
+    completed BOOLEAN
 )''')
 conn.commit()
+
+# Add 'date' column if missing
+try:
+    c.execute("ALTER TABLE daily_track ADD COLUMN date TEXT")
+    conn.commit()
+except sqlite3.OperationalError:
+    # Column already exists
+    pass
 
 # ------------------------------
 # EXERCISES & FOODS DATABASE
