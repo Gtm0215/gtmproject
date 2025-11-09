@@ -28,34 +28,31 @@ c.execute('''CREATE TABLE IF NOT EXISTS daily_track (
     name TEXT,
     exercise TEXT,
     calories INT,
-    completed BOOLEAN
+    completed BOOLEAN,
+    date TEXT
 )''')
 conn.commit()
-
-# Add 'date' column if missing
-try:
-    c.execute("ALTER TABLE daily_track ADD COLUMN date TEXT")
-    conn.commit()
-except sqlite3.OperationalError:
-    pass
 
 # ------------------------------
 # EXERCISES & FOODS DATABASE
 # ------------------------------
 exercises = {
-    "Push-up": {"category": "Chest", "level": "Beginner", "muscles": "Chest, Triceps, Shoulders", "calories":50, "animation":"animations/pushup.glb", "emoji":"💪"},
-    "Lat Pulldown": {"category": "Back", "level": "Intermediate", "muscles": "Lats, Biceps, Rear Delts","calories":70, "animation":"animations/latpulldown.glb", "emoji":"🏋️"},
-    "T-bar Row": {"category": "Back", "level": "Advanced", "muscles": "Lats, Traps, Rhomboids","calories":80, "animation":"animations/tbarrow.glb", "emoji":"🏋️‍♂️"},
-    "Squat": {"category": "Legs", "level": "Intermediate", "muscles": "Quads, Glutes, Hamstrings","calories":60, "animation":"animations/squat.glb", "emoji":"🦵"},
-    "Bicep Curl": {"category": "Arms", "level": "Beginner", "muscles": "Biceps","calories":40, "animation":"animations/bicepcurl.glb", "emoji":"💪"},
+    "Push-up": {"category": "Chest", "level": "Beginner", "muscles": "Chest, Triceps, Shoulders", "calories":50, "animation":"animations/pushup.glb", "emoji":"💪", "sets_reps":{"10-17":"3x10","18-29":"4x15","30-49":"3x12","50+":"2x10"}},
+    "Lat Pulldown": {"category": "Back", "level": "Intermediate", "muscles": "Lats, Biceps, Rear Delts","calories":70, "animation":"animations/latpulldown.glb", "emoji":"🏋️", "sets_reps":{"10-17":"3x10","18-29":"4x12","30-49":"3x10","50+":"2x8"}},
+    "T-bar Row": {"category": "Back", "level": "Advanced", "muscles": "Lats, Traps, Rhomboids","calories":80, "animation":"animations/tbarrow.glb", "emoji":"🏋️‍♂️", "sets_reps":{"10-17":"3x8","18-29":"4x10","30-49":"3x8","50+":"2x6"}},
+    "Squat": {"category": "Legs", "level": "Intermediate", "muscles": "Quads, Glutes, Hamstrings","calories":60, "animation":"animations/squat.glb", "emoji":"🦵", "sets_reps":{"10-17":"3x15","18-29":"4x20","30-49":"3x15","50+":"2x12"}},
+    "Bicep Curl": {"category": "Arms", "level": "Beginner", "muscles": "Biceps","calories":40, "animation":"animations/bicepcurl.glb", "emoji":"💪", "sets_reps":{"10-17":"3x12","18-29":"4x15","30-49":"3x12","50+":"2x10"}},
 }
 
 foods = {
-    "Oats": {"type":"Vegetarian","meal":"Breakfast","calories":150,"emoji":"🥣"},
-    "Egg Omelette": {"type":"Non-Vegetarian","meal":"Breakfast","calories":200,"emoji":"🥚"},
-    "Grilled Chicken": {"type":"Non-Vegetarian","meal":"Lunch","calories":250,"emoji":"🍗"},
-    "Paneer Curry": {"type":"Vegetarian","meal":"Lunch","calories":300,"emoji":"🧀"},
-    "Salad": {"type":"Vegetarian","meal":"Dinner","calories":100,"emoji":"🥗"},
+    "Oats": {"type":"Vegetarian","meal":"Breakfast","calories":150,"protein":5,"emoji":"🥣"},
+    "Egg Omelette": {"type":"Non-Vegetarian","meal":"Breakfast","calories":200,"protein":12,"emoji":"🥚"},
+    "Grilled Chicken": {"type":"Non-Vegetarian","meal":"Lunch","calories":250,"protein":25,"emoji":"🍗"},
+    "Paneer Curry": {"type":"Vegetarian","meal":"Lunch","calories":300,"protein":18,"emoji":"🧀"},
+    "Salad": {"type":"Vegetarian","meal":"Dinner","calories":100,"protein":3,"emoji":"🥗"},
+    "Protein Shake": {"type":"Vegetarian","meal":"Snack","calories":180,"protein":20,"emoji":"🥤"},
+    "Yogurt": {"type":"Vegetarian","meal":"Breakfast","calories":120,"protein":8,"emoji":"🥛"},
+    "Chicken Salad": {"type":"Non-Vegetarian","meal":"Lunch","calories":220,"protein":20,"emoji":"🥗"},
 }
 
 level_colors = {"Beginner":"#4CAF50", "Intermediate":"#FF9800", "Advanced":"#F44336"}
@@ -69,13 +66,30 @@ st.markdown("""
 <p style='text-align:center; color:#f0f0f0;'>Personalized Workouts, Diet Plans, BMI & Weekly Progress</p>
 </div>
 """, unsafe_allow_html=True)
-
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ------------------------------
 # TABS FOR SECTIONS
 # ------------------------------
 tab_profile, tab_workout, tab_diet, tab_progress = st.tabs(["Profile & BMI", "Workout Plan", "Diet Plan", "Progress Tracker"])
+
+# ------------------------------
+# HELPER FUNCTIONS
+# ------------------------------
+def age_group(age):
+    if age<18: return "10-17"
+    elif age<30: return "18-29"
+    elif age<50: return "30-49"
+    else: return "50+"
+
+def get_calories_protein(age, activity):
+    group = age_group(age)
+    base = {"10-17":2000, "18-29":2400, "30-49":2200, "50+":2000}
+    protein = {"10-17":50, "18-29":70, "30-49":60, "50+":50}
+    multiplier = {"Sedentary":0.9,"Light":1.0,"Moderate":1.2,"Very Active":1.4}
+    cal = int(base[group]*multiplier[activity])
+    prot = int(protein[group]*multiplier[activity])
+    return cal, prot
 
 # ------------------------------
 # PROFILE & BMI
@@ -110,52 +124,41 @@ with tab_profile:
         </div>
         """, unsafe_allow_html=True)
         
-    # BMI Calculator
-    st.subheader("⚖️ BMI Calculator")
-    weight = st.number_input("Weight (kg)")
-    height = st.number_input("Height (cm)")
-    
-    if st.button("Calculate BMI"):
-        if weight>0 and height>0:
-            bmi = weight / ((height/100)**2)
-            st.write(f"Your BMI: {bmi:.2f}")
-            if bmi<18.5:
-                st.warning("Underweight: Consider a calorie-rich diet")
-            elif bmi<24.9:
-                st.success("Normal weight")
-            elif bmi<29.9:
-                st.warning("Overweight: Consider reducing calories and exercising more")
+        # BMI Calculator
+        st.subheader("⚖️ BMI Calculator")
+        weight = st.number_input("Weight (kg)")
+        height = st.number_input("Height (cm)")
+        
+        if st.button("Calculate BMI"):
+            if weight>0 and height>0:
+                bmi = weight / ((height/100)**2)
+                st.write(f"Your BMI: {bmi:.2f}")
+                if bmi<18.5:
+                    st.warning("Underweight: Consider a calorie-rich diet")
+                elif bmi<24.9:
+                    st.success("Normal weight")
+                elif bmi<29.9:
+                    st.warning("Overweight: Consider reducing calories and exercising more")
+                else:
+                    st.error("Obese: Consult a health professional")
             else:
-                st.error("Obese: Consult a health professional")
-        else:
-            st.error("Please enter valid weight and height")
+                st.error("Please enter valid weight and height")
 
 # ------------------------------
 # WORKOUT PLAN
 # ------------------------------
 with tab_workout:
     st.header("🏋️ Personalized Workout Plan")
-    def generate_workout(activity):
-        plan=[]
-        for ex,info in exercises.items():
-            if activity=="Sedentary" and info["level"]=="Beginner":
-                plan.append(ex)
-            elif activity=="Light" and info["level"] in ["Beginner","Intermediate"]:
-                plan.append(ex)
-            elif activity in ["Moderate","Very Active"]:
-                plan.append(ex)
-        return plan[:10]
-
     if name:
-        workout_plan = generate_workout(activity)
-        for ex in workout_plan:
-            info = exercises[ex]
-            col1,col2 = st.columns([1,1])
+        group = age_group(age)
+        for ex, info in exercises.items():
+            col1, col2 = st.columns([1,1])
             with col1:
                 st.markdown(f"""
                 <div style='background: linear-gradient(to right,#ff512f,#dd2476); padding:15px; border-radius:15px; box-shadow:2px 2px 10px #000000'>
                     <h3 style='color:#f0f0f0'>{info['emoji']} {ex}</h3>
                     <p style='color:#f0f0f0'><b>Muscles:</b> {info['muscles']}</p>
+                    <p style='color:#f0f0f0'><b>Sets x Reps:</b> {info['sets_reps'][group]}</p>
                     <span style='background-color:{level_colors[info['level']]};color:#f0f0f0;padding:5px 10px;border-radius:5px'>{info['level']}</span>
                 </div>
                 """, unsafe_allow_html=True)
@@ -173,37 +176,21 @@ with tab_workout:
 # ------------------------------
 # DIET PLAN
 # ------------------------------
-def get_calories(age, activity):
-    if age<18: base=1800
-    elif age<30: base=2200
-    elif age<50: base=2000
-    else: base=1800
-    multiplier = {"Sedentary":0.9,"Light":1.0,"Moderate":1.2,"Very Active":1.4}
-    return int(base*multiplier[activity])
-
-def generate_diet_plan(diet_pref, age, activity):
-    cal_goal = get_calories(age, activity)
-    plan=[]
-    total=0
-    for food,info in foods.items():
-        if info["type"]==diet_pref:
-            plan.append(f"{info['emoji']} {food} ({info['meal']}) - {info['calories']} cal")
-            total+=info["calories"]
-        if total>=cal_goal:
-            break
-    return plan, cal_goal
-
 with tab_diet:
     st.header("🥗 Personalized Diet Plan")
     if name:
-        plan, cal_goal = generate_diet_plan(diet, age, activity)
-        st.write(f"Calorie Goal: {cal_goal} kcal/day")
-        for meal in plan:
-            st.markdown(f"""
-            <div style='background: linear-gradient(to right,#f7971e,#ffd200);padding:10px;margin:5px;border-radius:10px;box-shadow:2px 2px 5px #000000'>
-                {meal}
-            </div>
-            """, unsafe_allow_html=True)
+        cal_goal, prot_goal = get_calories_protein(age, activity)
+        st.write(f"Calorie Goal: {cal_goal} kcal/day | Protein Goal: {prot_goal} g/day")
+        total_cal, total_prot = 0,0
+        for food, info in foods.items():
+            if info["type"]==diet and total_cal<cal_goal:
+                st.markdown(f"""
+                <div style='background: linear-gradient(to right,#f7971e,#ffd200);padding:10px;margin:5px;border-radius:10px;box-shadow:2px 2px 5px #000000'>
+                    {info['emoji']} {food} ({info['meal']}) - {info['calories']} cal | Protein: {info['protein']}g
+                </div>
+                """, unsafe_allow_html=True)
+                total_cal+=info['calories']
+                total_prot+=info['protein']
 
 # ------------------------------
 # PROGRESS TRACKER
@@ -211,7 +198,7 @@ with tab_diet:
 with tab_progress:
     st.header("📊 Daily & Weekly Progress")
     if name:
-        # Daily
+        # Daily Tracker
         today = datetime.date.today().isoformat()
         c.execute("SELECT exercise, calories FROM daily_track WHERE name=? AND date=? AND completed=1",(name,today))
         rows = c.fetchall()
@@ -225,7 +212,7 @@ with tab_progress:
         else:
             st.write("No exercises completed today.")
 
-        # Weekly
+        # Weekly Tracker
         week_ago = (datetime.date.today() - datetime.timedelta(days=6)).isoformat()
         c.execute("SELECT date, SUM(calories) as cal_count, COUNT(exercise) as ex_count FROM daily_track WHERE name=? AND date>=? GROUP BY date",(name,week_ago))
         week_data = c.fetchall()
@@ -256,7 +243,7 @@ st.markdown("""
 <b>Name:</b> Gautam Lal <br>
 <b>GitHub:</b> <a href='https://github.com/YourUsername' style='color:#00FFFF'>github.com/YourUsername</a> <br>
 <b>Email:</b> your_email@example.com <br>
-<b>About:</b> Smart Health Advisor app with personalized workouts, diets, BMI calculator, 3D exercise models, and progress charts.
+<b>About:</b> Smart Health Advisor app with personalized workouts, age-specific diets, BMI calculator, 3D exercise models, sets & reps suggestions, and weekly progress charts.
 </div>
 """, unsafe_allow_html=True)
 
