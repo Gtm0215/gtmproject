@@ -1,5 +1,3 @@
-# smart_health_advisor.py
-
 import streamlit as st
 import sqlite3
 import pandas as pd
@@ -45,14 +43,20 @@ exercises = {
 }
 
 foods = {
+    # Breakfast
     "Oats": {"type":"Vegetarian","meal":"Breakfast","calories":150,"protein":5,"emoji":"🥣"},
     "Egg Omelette": {"type":"Non-Vegetarian","meal":"Breakfast","calories":200,"protein":12,"emoji":"🥚"},
+    "Yogurt": {"type":"Vegetarian","meal":"Breakfast","calories":120,"protein":8,"emoji":"🥛"},
+    # Lunch
     "Grilled Chicken": {"type":"Non-Vegetarian","meal":"Lunch","calories":250,"protein":25,"emoji":"🍗"},
     "Paneer Curry": {"type":"Vegetarian","meal":"Lunch","calories":300,"protein":18,"emoji":"🧀"},
-    "Salad": {"type":"Vegetarian","meal":"Dinner","calories":100,"protein":3,"emoji":"🥗"},
-    "Protein Shake": {"type":"Vegetarian","meal":"Snack","calories":180,"protein":20,"emoji":"🥤"},
-    "Yogurt": {"type":"Vegetarian","meal":"Breakfast","calories":120,"protein":8,"emoji":"🥛"},
     "Chicken Salad": {"type":"Non-Vegetarian","meal":"Lunch","calories":220,"protein":20,"emoji":"🥗"},
+    # Dinner
+    "Salad": {"type":"Vegetarian","meal":"Dinner","calories":100,"protein":3,"emoji":"🥗"},
+    "Grilled Fish": {"type":"Non-Vegetarian","meal":"Dinner","calories":230,"protein":22,"emoji":"🐟"},
+    # Snacks
+    "Protein Shake": {"type":"Vegetarian","meal":"Snack","calories":180,"protein":20,"emoji":"🥤"},
+    "Nuts Mix": {"type":"Vegetarian","meal":"Snack","calories":200,"protein":6,"emoji":"🥜"},
 }
 
 level_colors = {"Beginner":"#4CAF50", "Intermediate":"#FF9800", "Advanced":"#F44336"}
@@ -69,7 +73,7 @@ st.markdown("""
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ------------------------------
-# TABS FOR SECTIONS
+# TABS
 # ------------------------------
 tab_profile, tab_workout, tab_diet, tab_progress = st.tabs(["Profile & BMI", "Workout Plan", "Diet Plan", "Progress Tracker"])
 
@@ -82,14 +86,38 @@ def age_group(age):
     elif age<50: return "30-49"
     else: return "50+"
 
-def get_calories_protein(age, activity):
+def get_nutrition_goals(age, gender, activity):
     group = age_group(age)
-    base = {"10-17":2000, "18-29":2400, "30-49":2200, "50+":2000}
-    protein = {"10-17":50, "18-29":70, "30-49":60, "50+":50}
+    # Base calorie and protein ranges by age
+    cal_base = {"10-17":2000, "18-29":2400, "30-49":2200, "50+":2000}
+    prot_base = {"10-17":50, "18-29":70, "30-49":60, "50+":50}
+    
+    # Gender adjustment: males ~10% higher
+    if gender=="Male":
+        cal_base = {k:int(v*1.1) for k,v in cal_base.items()}
+        prot_base = {k:int(v*1.1) for k,v in prot_base.items()}
+
+    # Activity multiplier
     multiplier = {"Sedentary":0.9,"Light":1.0,"Moderate":1.2,"Very Active":1.4}
-    cal = int(base[group]*multiplier[activity])
-    prot = int(protein[group]*multiplier[activity])
-    return cal, prot
+    cal_goal = int(cal_base[group]*multiplier[activity])
+    prot_goal = int(prot_base[group]*multiplier[activity])
+    return cal_goal, prot_goal
+
+def generate_diet_plan(diet_pref, age, gender, activity):
+    cal_goal, prot_goal = get_nutrition_goals(age, gender, activity)
+    plan=[]
+    total_cal, total_prot = 0,0
+    meals_order = ["Breakfast","Snack","Lunch","Snack","Dinner"]
+    for meal_type in meals_order:
+        for food, info in foods.items():
+            if info["meal"]==meal_type and info["type"]==diet_pref:
+                if total_cal+info["calories"]>cal_goal:
+                    continue
+                plan.append(info)
+                total_cal += info["calories"]
+                total_prot += info["protein"]
+                break
+    return plan, cal_goal, prot_goal
 
 # ------------------------------
 # PROFILE & BMI
@@ -124,25 +152,20 @@ with tab_profile:
         </div>
         """, unsafe_allow_html=True)
         
-        # BMI Calculator
+        # BMI
         st.subheader("⚖️ BMI Calculator")
         weight = st.number_input("Weight (kg)")
         height = st.number_input("Height (cm)")
-        
         if st.button("Calculate BMI"):
             if weight>0 and height>0:
                 bmi = weight / ((height/100)**2)
                 st.write(f"Your BMI: {bmi:.2f}")
-                if bmi<18.5:
-                    st.warning("Underweight: Consider a calorie-rich diet")
-                elif bmi<24.9:
-                    st.success("Normal weight")
-                elif bmi<29.9:
-                    st.warning("Overweight: Consider reducing calories and exercising more")
-                else:
-                    st.error("Obese: Consult a health professional")
+                if bmi<18.5: st.warning("Underweight: Consider calorie-rich diet")
+                elif bmi<24.9: st.success("Normal weight")
+                elif bmi<29.9: st.warning("Overweight: Reduce calories & exercise more")
+                else: st.error("Obese: Consult a health professional")
             else:
-                st.error("Please enter valid weight and height")
+                st.error("Enter valid weight and height")
 
 # ------------------------------
 # WORKOUT PLAN
@@ -179,18 +202,14 @@ with tab_workout:
 with tab_diet:
     st.header("🥗 Personalized Diet Plan")
     if name:
-        cal_goal, prot_goal = get_calories_protein(age, activity)
+        plan, cal_goal, prot_goal = generate_diet_plan(diet, age, gender, activity)
         st.write(f"Calorie Goal: {cal_goal} kcal/day | Protein Goal: {prot_goal} g/day")
-        total_cal, total_prot = 0,0
-        for food, info in foods.items():
-            if info["type"]==diet and total_cal<cal_goal:
-                st.markdown(f"""
-                <div style='background: linear-gradient(to right,#f7971e,#ffd200);padding:10px;margin:5px;border-radius:10px;box-shadow:2px 2px 5px #000000'>
-                    {info['emoji']} {food} ({info['meal']}) - {info['calories']} cal | Protein: {info['protein']}g
-                </div>
-                """, unsafe_allow_html=True)
-                total_cal+=info['calories']
-                total_prot+=info['protein']
+        for info in plan:
+            st.markdown(f"""
+            <div style='background: linear-gradient(to right,#f7971e,#ffd200);padding:10px;margin:5px;border-radius:10px;box-shadow:2px 2px 5px #000000'>
+                {info['emoji']} {info['meal']}: {info['calories']} cal | Protein: {info['protein']}g
+            </div>
+            """, unsafe_allow_html=True)
 
 # ------------------------------
 # PROGRESS TRACKER
@@ -198,19 +217,15 @@ with tab_diet:
 with tab_progress:
     st.header("📊 Daily & Weekly Progress")
     if name:
-        # Daily Tracker
         today = datetime.date.today().isoformat()
         c.execute("SELECT exercise, calories FROM daily_track WHERE name=? AND date=? AND completed=1",(name,today))
         rows = c.fetchall()
         total_cal = sum([r[1] for r in rows])
         st.subheader("Daily Tracker")
         if rows:
-            st.write(f"Exercises completed today: {len(rows)}")
-            st.write(f"Calories burned today: {total_cal} kcal")
-            for r in rows:
-                st.write(f"✅ {r[0]} - {r[1]} kcal")
-        else:
-            st.write("No exercises completed today.")
+            st.write(f"Exercises completed today: {len(rows)} | Calories burned: {total_cal} kcal")
+            for r in rows: st.write(f"✅ {r[0]} - {r[1]} kcal")
+        else: st.write("No exercises completed today.")
 
         # Weekly Tracker
         week_ago = (datetime.date.today() - datetime.timedelta(days=6)).isoformat()
@@ -243,7 +258,7 @@ st.markdown("""
 <b>Name:</b> Gautam Lal <br>
 <b>GitHub:</b> <a href='https://github.com/YourUsername' style='color:#00FFFF'>github.com/YourUsername</a> <br>
 <b>Email:</b> your_email@example.com <br>
-<b>About:</b> Smart Health Advisor app with personalized workouts, age-specific diets, BMI calculator, 3D exercise models, sets & reps suggestions, and weekly progress charts.
+<b>About:</b> Smart Health Advisor app with personalized workouts, age & gender-specific diets, BMI calculator, 3D exercise models, sets & reps suggestions, and weekly progress charts.
 </div>
 """, unsafe_allow_html=True)
 
