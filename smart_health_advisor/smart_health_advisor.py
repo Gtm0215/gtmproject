@@ -354,3 +354,28 @@ else:
         st.markdown("---")
         st.write(f"Username: `{user.get('username')}`")
         st.write(f"Created at: {user.get('created_at')}")
+# Recommendations
+    elif menu == "Recommendations":
+        st.header("Personalized Diet & Exercise Suggestions")
+
+        bmi = calculate_bmi(user['weight_kg'], user['height_cm'])
+        bmr = calculate_bmr(user['weight_kg'], user['height_cm'], user['age'], user['gender'])
+        calorie_target = daily_calorie_needs(bmr, user['activity_level'])
+        diet = recommend_diet(bmi, user['medical_conditions'], calorie_target)
+        exercises = recommend_exercises(bmi, user['medical_conditions'])
+
+        tab1, tab2 = st.tabs(["🥗 Diet Plan", "💪 Exercise Plan"])
+
+        with tab1:
+            st.subheader("Recommended Foods to Eat 🍽️")
+            for item in diet["eat"]:
+                st.write(f"✅ {item}")
+
+            st.subheader("Foods to Avoid 🚫")
+            for item in diet["avoid"]:
+                st.write(f"❌ {item}")
+
+        with tab2:
+            st.subheader("Suggested Workouts 🏋️")
+            for ex in exercises:
+                st.write(f"🏃 {ex}")
