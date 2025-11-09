@@ -62,6 +62,47 @@ foods = {
 level_colors = {"Beginner":"#4CAF50", "Intermediate":"#FF9800", "Advanced":"#F44336"}
 
 # ------------------------------
+# MEDICAL CONDITION DATABASE
+# ------------------------------
+medical_exercises = {
+    "Hypertension": ["Walking", "Yoga", "Cycling"],
+    "Diabetes": ["Brisk Walking", "Resistance Training", "Squats"],
+    "Back Pain": ["Cat-Cow Stretch", "Pelvic Tilts", "Bird Dog"],
+    "Arthritis": ["Swimming", "Yoga", "Stationary Bike"],
+    "Obesity": ["Walking", "Resistance Training", "Swimming"],
+    "Osteoporosis": ["Weight Bearing Exercises", "Walking", "Light Squats"],
+    # Add more 100+ conditions here
+}
+
+medical_diet = {
+    "Hypertension": {
+        "eat": ["Leafy Greens", "Oats", "Berries", "Low-fat Dairy"],
+        "avoid": ["Salt", "Processed Foods", "Sugary Drinks"]
+    },
+    "Diabetes": {
+        "eat": ["Whole Grains", "Vegetables", "Lean Protein", "Nuts"],
+        "avoid": ["Sugar", "White Bread", "Sweetened Beverages"]
+    },
+    "Back Pain": {
+        "eat": ["Calcium-rich foods", "Leafy Greens", "Protein"],
+        "avoid": ["Sugary Drinks", "Excessive Fat"]
+    },
+    "Arthritis": {
+        "eat": ["Omega-3 rich foods", "Fruits", "Vegetables"],
+        "avoid": ["Red Meat", "Processed Foods"]
+    },
+    "Obesity": {
+        "eat": ["Vegetables", "Lean Protein", "Whole Grains"],
+        "avoid": ["Fried Foods", "Sugary Drinks"]
+    },
+    "Osteoporosis": {
+        "eat": ["Dairy", "Leafy Greens", "Fish"],
+        "avoid": ["Excess Salt", "Soft Drinks"]
+    },
+    # Add more 100+ conditions here
+}
+
+# ------------------------------
 # HEADER
 # ------------------------------
 st.markdown("""
@@ -75,7 +116,9 @@ st.markdown("<br>", unsafe_allow_html=True)
 # ------------------------------
 # TABS
 # ------------------------------
-tab_profile, tab_workout, tab_diet, tab_progress = st.tabs(["Profile & BMI", "Workout Plan", "Diet Plan", "Progress Tracker"])
+tab_profile, tab_workout, tab_diet, tab_progress, tab_med_exercise, tab_med_diet = st.tabs(
+    ["Profile & BMI", "Workout Plan", "Diet Plan", "Progress Tracker", "Medical Exercise Advice", "Medical Diet Advice"]
+)
 
 # ------------------------------
 # HELPER FUNCTIONS
@@ -88,16 +131,11 @@ def age_group(age):
 
 def get_nutrition_goals(age, gender, activity):
     group = age_group(age)
-    # Base calorie and protein ranges by age
     cal_base = {"10-17":2000, "18-29":2400, "30-49":2200, "50+":2000}
     prot_base = {"10-17":50, "18-29":70, "30-49":60, "50+":50}
-    
-    # Gender adjustment: males ~10% higher
     if gender=="Male":
         cal_base = {k:int(v*1.1) for k,v in cal_base.items()}
         prot_base = {k:int(v*1.1) for k,v in prot_base.items()}
-
-    # Activity multiplier
     multiplier = {"Sedentary":0.9,"Light":1.0,"Moderate":1.2,"Very Active":1.4}
     cal_goal = int(cal_base[group]*multiplier[activity])
     prot_goal = int(prot_base[group]*multiplier[activity])
@@ -114,8 +152,8 @@ def generate_diet_plan(diet_pref, age, gender, activity):
                 if total_cal+info["calories"]>cal_goal:
                     continue
                 plan.append(info)
-                total_cal += info["calories"]
-                total_prot += info["protein"]
+                total_cal += info['calories']
+                total_prot += info['protein']
                 break
     return plan, cal_goal, prot_goal
 
@@ -212,6 +250,31 @@ with tab_diet:
             """, unsafe_allow_html=True)
 
 # ------------------------------
+# MEDICAL EXERCISE ADVICE
+# ------------------------------
+with tab_med_exercise:
+    st.header("🏥 Medical Exercise Advice")
+    condition = st.selectbox("Select Your Medical Condition", list(medical_exercises.keys()))
+    if condition:
+        st.subheader(f"Recommended Exercises for {condition}")
+        for ex in medical_exercises[condition]:
+            st.write(f"✅ {ex}")
+
+# ------------------------------
+# MEDICAL DIET ADVICE
+# ------------------------------
+with tab_med_diet:
+    st.header("🥗 Medical Diet Advice")
+    condition = st.selectbox("Select Your Medical Condition", list(medical_diet.keys()))
+    if condition:
+        st.subheader(f"What to Eat for {condition}")
+        for food in medical_diet[condition]["eat"]:
+            st.write(f"✅ {food}")
+        st.subheader(f"What to Avoid for {condition}")
+        for food in medical_diet[condition]["avoid"]:
+            st.write(f"❌ {food}")
+
+# ------------------------------
 # PROGRESS TRACKER
 # ------------------------------
 with tab_progress:
@@ -258,8 +321,8 @@ st.markdown("""
 <b>Name:</b> Gautam Lal <br>
 <b>GitHub:</b> <a href='https://github.com/YourUsername' style='color:#00FFFF'>github.com/YourUsername</a> <br>
 <b>Email:</b> your_email@example.com <br>
-<b>About:</b> Smart Health Advisor app with personalized workouts, age & gender-specific diets, BMI calculator, 3D exercise models, sets & reps suggestions, and weekly progress charts.
+<b>About:</b> Smart Health Advisor app with personalized workouts, age & gender-specific diets, BMI calculator, 3D exercise models, sets & reps suggestions, weekly progress charts, and medical condition exercise & diet advice.
 </div>
 """, unsafe_allow_html=True)
 
-st.success("Your personalized health dashboard with BMI, diet, workouts, and weekly tracking is ready! 🎉")
+st.success("Your personalized health dashboard with BMI, diet, workouts, medical advice, and weekly tracking is ready! 🎉")
