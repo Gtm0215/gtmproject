@@ -401,7 +401,7 @@ st.markdown("<hr style='border:2px solid #0072ff'>", unsafe_allow_html=True)
 st.header("👨‍💻 About Developer")
 st.markdown("""
 <div style='background: linear-gradient(to right,#1e3c72,#2a5298);padding:15px;border-radius:10px;box-shadow:2px 2px 10px #000000; color:#f0f0f0'>
-<b>Name:</b> Gautam Lal <br>
+<b>Name:</b> Gautam Lal Yadav <br>
 <b>GitHub:</b> <a href='https://github.com/YourUsername' style='color:#00FFFF'>github.com/YourUsername</a> <br>
 <b>Email:</b> your_email@example.com <br>
 <b>About:</b> Smart Health Advisor app with personalized workouts, age & gender-specific diets, medical guidance, BMI calculator, 3D exercise models, sets & reps suggestions, and weekly progress charts.
