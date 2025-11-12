@@ -7,11 +7,11 @@ import altair as alt
 
 # ------------------------------
 # ------------------------------
-# AUTH SYSTEM (Signup / Login / Admin / Logout) — Fixed Version
+# AUTH SYSTEM (Signup / Login / Admin / Logout) — FINAL FIXED VERSION
 # ------------------------------
 st.sidebar.title("🔑 Authentication")
 
-# Ensure the table exists before any login/signup attempt
+# Create users_login table if missing
 c.execute('''CREATE TABLE IF NOT EXISTS users_login (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE,
@@ -20,13 +20,13 @@ c.execute('''CREATE TABLE IF NOT EXISTS users_login (
 )''')
 conn.commit()
 
-# Ensure default admin account exists
+# Ensure default admin account
 c.execute("SELECT * FROM users_login WHERE username='admin'")
 if not c.fetchone():
     c.execute("INSERT INTO users_login (username, password, role) VALUES (?, ?, ?)", ("admin", "admin123", "admin"))
     conn.commit()
 
-# Session defaults
+# Initialize session variables
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 if "username" not in st.session_state:
@@ -34,8 +34,10 @@ if "username" not in st.session_state:
 if "role" not in st.session_state:
     st.session_state.role = "user"
 
+# Sidebar options
 auth_action = st.sidebar.radio("Select Action", ["Signup", "Login", "Admin Login", "Logout"])
 
+# Helper functions
 def login_user(username, password):
     c.execute("SELECT * FROM users_login WHERE username=? AND password=?", (username, password))
     return c.fetchone()
@@ -96,7 +98,34 @@ elif auth_action == "Logout":
     st.session_state.role = "user"
     st.sidebar.info("👋 Logged out successfully!")
 
+# ------------------------------
+# MAIN DASHBOARD CONTENT
+# ------------------------------
+if st.session_state.logged_in:
+    st.success(f"✅ Logged in as {st.session_state.username} ({st.session_state.role})")
 
+    # If admin -> show user management
+    if st.session_state.role == "admin":
+        st.header("🧑‍💼 Admin Dashboard")
+        st.write("Here you can view all registered users and their profiles.")
+        c.execute("SELECT id, username, role FROM users_login")
+        users = c.fetchall()
+        if users:
+            df_users = pd.DataFrame(users, columns=["User ID", "Username", "Role"])
+            st.dataframe(df_users)
+        else:
+            st.info("No users found yet.")
+
+        st.markdown("---")
+
+    # ✅ Show your Smart Health Advisor main tabs for logged-in users
+    tab_profile, tab_workout, tab_diet, tab_progress, tab_med_exercise, tab_med_diet = st.tabs(
+        ["Profile & BMI", "Workout Plan", "Diet Plan", "Progress Tracker", "Medical Exercises", "Medical Diet"]
+    )
+
+    # (KEEP your existing code for profile, workout, diet, etc. below here ⬇)
+else:
+    st.warning("⚠️ Please log in or sign up from the sidebar to access your health dashboard.")
 # ------------------------------
 # DATABASE SETUP
 # ------------------------------
