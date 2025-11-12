@@ -6,6 +6,81 @@ import streamlit.components.v1 as components
 import altair as alt
 
 # ------------------------------
+# AUTH SYSTEM (Signup / Login / Admin / Logout)
+# ------------------------------
+st.sidebar.title("🔑 Authentication")
+
+auth_action = st.sidebar.radio("Select Action", ["Signup", "Login", "Admin Login", "Logout"])
+
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+if "username" not in st.session_state:
+    st.session_state.username = None
+if "role" not in st.session_state:
+    st.session_state.role = "user"
+
+# Database functions
+def login_user(username, password):
+    c.execute("SELECT * FROM users_login WHERE username=? AND password=?", (username, password))
+    return c.fetchone()
+
+def signup_user(username, password, role="user"):
+    try:
+        c.execute("INSERT INTO users_login (username, password, role) VALUES (?, ?, ?)", (username, password, role))
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        return False
+
+# Signup
+if auth_action == "Signup":
+    st.sidebar.subheader("🧍 Create Account")
+    su_name = st.sidebar.text_input("Username")
+    su_pass = st.sidebar.text_input("Password", type="password")
+    if st.sidebar.button("Sign Up"):
+        if signup_user(su_name, su_pass):
+            st.sidebar.success("✅ Account created successfully! Please Login.")
+        else:
+            st.sidebar.error("⚠️ Username already exists!")
+
+# Login
+elif auth_action == "Login":
+    st.sidebar.subheader("🔓 Login to Dashboard")
+    user = st.sidebar.text_input("Username")
+    passwd = st.sidebar.text_input("Password", type="password")
+    if st.sidebar.button("Login"):
+        data = login_user(user, passwd)
+        if data:
+            st.session_state.logged_in = True
+            st.session_state.username = data[1]
+            st.session_state.role = data[3]
+            st.sidebar.success(f"Welcome, {data[1]}!")
+        else:
+            st.sidebar.error("❌ Invalid username or password.")
+
+# Admin Login
+elif auth_action == "Admin Login":
+    st.sidebar.subheader("🧑‍💼 Admin Login")
+    admin_user = st.sidebar.text_input("Admin Username")
+    admin_pass = st.sidebar.text_input("Admin Password", type="password")
+    if st.sidebar.button("Login as Admin"):
+        admin = login_user(admin_user, admin_pass)
+        if admin and admin[3] == "admin":
+            st.session_state.logged_in = True
+            st.session_state.username = admin_user
+            st.session_state.role = "admin"
+            st.sidebar.success("✅ Admin access granted!")
+        else:
+            st.sidebar.error("Invalid admin credentials.")
+
+# Logout
+elif auth_action == "Logout":
+    st.session_state.logged_in = False
+    st.session_state.username = None
+    st.session_state.role = "user"
+    st.sidebar.info("👋 Logged out successfully!")
+
+# ------------------------------
 # DATABASE SETUP
 # ------------------------------
 conn = sqlite3.connect('health_advisor.db', check_same_thread=False)
