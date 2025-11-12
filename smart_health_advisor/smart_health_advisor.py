@@ -6,12 +6,27 @@ import streamlit.components.v1 as components
 import altair as alt
 
 # ------------------------------
-# AUTH SYSTEM (Signup / Login / Admin / Logout)
+# ------------------------------
+# AUTH SYSTEM (Signup / Login / Admin / Logout) — Fixed Version
 # ------------------------------
 st.sidebar.title("🔑 Authentication")
 
-auth_action = st.sidebar.radio("Select Action", ["Signup", "Login", "Admin Login", "Logout"])
+# Ensure the table exists before any login/signup attempt
+c.execute('''CREATE TABLE IF NOT EXISTS users_login (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE,
+    password TEXT,
+    role TEXT CHECK(role IN ('user', 'admin')) DEFAULT 'user'
+)''')
+conn.commit()
 
+# Ensure default admin account exists
+c.execute("SELECT * FROM users_login WHERE username='admin'")
+if not c.fetchone():
+    c.execute("INSERT INTO users_login (username, password, role) VALUES (?, ?, ?)", ("admin", "admin123", "admin"))
+    conn.commit()
+
+# Session defaults
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 if "username" not in st.session_state:
@@ -19,7 +34,8 @@ if "username" not in st.session_state:
 if "role" not in st.session_state:
     st.session_state.role = "user"
 
-# Database functions
+auth_action = st.sidebar.radio("Select Action", ["Signup", "Login", "Admin Login", "Logout"])
+
 def login_user(username, password):
     c.execute("SELECT * FROM users_login WHERE username=? AND password=?", (username, password))
     return c.fetchone()
@@ -79,6 +95,7 @@ elif auth_action == "Logout":
     st.session_state.username = None
     st.session_state.role = "user"
     st.sidebar.info("👋 Logged out successfully!")
+
 
 # ------------------------------
 # DATABASE SETUP
